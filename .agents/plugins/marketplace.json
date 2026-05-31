@@ -1,0 +1,20 @@
+{
+  "name": "sqlserver-postgres-plugin-marketplace",
+  "interface": {
+    "displayName": "SQL Server/Postgres Plugin Collection"
+  },
+  "plugins": [
+    {
+      "name": "sqlserver-postgres-performance-advisor",
+      "source": {
+        "source": "local",
+        "path": "./plugins/sqlserver-postgres-performance-advisor"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

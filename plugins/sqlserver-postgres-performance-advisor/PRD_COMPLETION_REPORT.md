@@ -1,95 +1,96 @@
-# PRD-Umsetzungsnachweis (CodexDB Plugin)
+# PRD Completion Report
 
-## Stand der Umsetzung (aus `prd_ai_codex_plugin_sqlserver_postgres.md`)
+This document summarizes how the SQL Server/PostgreSQL Codex plugin implements
+the product requirements from the PRD.
 
-- ✅ **5.1 Safe Autonomous Execution Layer**
-  - `runtime/riskEngine.js`
-  - `runtime/policyEngine.js`
-  - `runtime/auditLogger.js`
-  - `runtime/orchestrator.js`
-  - Nachweis: `node runtime/runTool.js classify_risk ...`, `simulate_query ...` liefern `risk/policyDecision` und bei blockieren entsprechenden Status (`blocked`/`requires_sandbox_context`).
+## Completion Summary
 
-- ✅ **MCP Tool-Katalog (Read / Controlled Write / Governance)**
-  - Tool-Namen in `runtime/tool-manifest.json` und Dispatch-Mapping in `runtime/orchestrator.js`
-  - Nachweis: `node runtime/runTool.js list_databases ...`, `describe_table ...`, `detect_pii ...`, `propose_migration ...`.
+The plugin implements the PRD as a local, deterministic Codex runtime with
+governed database operations, safety checks, skill documentation, and release
+readiness tooling.
 
-- ✅ **5.2 Explain Plan Intelligence (Basisimplementierung)**
-  - `runtime/orchestrator.js`, `runtime/db/sqlServerAdapter.js`, `runtime/db/postgresAdapter.js`
-  - Nachweis: `explain_query` ist durch Adapterpfad geroutet; Fallback auf Mock-Plan vorhanden.
+Implemented areas:
 
-- ✅ **5.3 Multi-Agent Orchestration (initiales Skelett)**
-  - `runtime/agentOrchestrator.js`, Tool-zu-Agent-Zuordnung inkl. Risiken
+- SQL Server and PostgreSQL metadata discovery.
+- Query and workload diagnostics.
+- Execution-plan, wait-event, lock, deadlock, index, replication, and SLO
+  analysis.
+- Policy-gated migration, rollback, optimization, index, and partitioning
+  workflows.
+- Production readiness checks, audit logging, replay evidence, and migration
+  signing metadata.
+- Advisor workflows for incident response, workload impact, release readiness,
+  cost-performance analysis, and governed self-healing.
+- Closed-loop autonomous operator workflows that decompose objectives, plan
+  dry-run experiments, compare counterfactuals, enforce autonomy boundaries,
+  and produce executive decision evidence without production apply.
+- AI cognitive control-plane workflows for strategy synthesis, schema
+  ontology mapping, prompt risk auditing, decision simulation, learning
+  backlogs, knowledge-gap detection, trust scoring, semantic incident
+  prediction, cross-agent consensus, and ROI narratives.
+- Marketplace-ready skill packaging under `skills/`.
 
-- ✅ **5.4 Semantic Schema Intelligence**
-  - `runtime/config.js` (sampleCatalog)
-  - `runtime/semanticGraph.js`
-  - `describe_relationships` nutzt graphbasierten Fallback und Adapterkanten.
+## Runtime Evidence
 
-- ✅ **5.5 Autonomous Migration Engine (Kontrollierter Entwurf)**
-  - `runtime/orchestrator.js` (Tool-Routing), `skills/*`-Definitionssätze (z. B. `skills/propose-migration`)
+Core implementation files:
 
-- ✅ **5.6 AI-native Incident Analysis (MVP)**
-  - `runtime/observabilityEngine.js`, `runtime/orchestrator.js`, `skills/incident-analysis`
+- `runtime/orchestrator.js`
+- `runtime/tool-manifest.json`
+- `runtime/policyEngine.js`
+- `runtime/riskEngine.js`
+- `runtime/sqlSafety.js`
+- `runtime/db/postgresAdapter.js`
+- `runtime/db/sqlServerAdapter.js`
+- `scripts/plugin-readiness-report.js`
 
-- ✅ **AI-USP: Intent + Repro-Execution**
-  - `runtime/orchestrator.js` (`compile_intent`, Decision-Graph im `policyDecision`-Flow, Replay-Delta in `replay_execution`)
-  - `runtime/tool-manifest.json`, `skills/compile-intent`, `skills/cross-engine-translate`, `skills/policy-suggestion-agent`, `skills/self-healing-playbook`
+Skill documentation is available under `skills/*/SKILL.md`.
 
-- ✅ **Erweiterte PRD-USPs (deterministischer Runtime-MVP)**
-  - `retrieve_context`: lokaler RAG-/Memory-Kontext mit pgvector-/Graph-kompatiblem Contract.
-  - `query_time_machine`: historische Query-State-Rekonstruktion mit Regression Point.
-  - `deadlock_simulator`: Wait-for-Graph und Deadlock-Risiko-Prognose.
-  - `evolve_indexes`: autonome Index-Evolution mit Validierungs- und Rollbackplan.
-  - `describe_business_layer`: fachliche Entitäten, Sensitivität und kritische Pfade aus dem semantischen Graph.
-  - `cost_intelligence`: Cost-Driver-Ranking, Unit Economics und Budget Controls.
-  - `telemetry_correlation`: OpenTelemetry-nahe Signalreferenzen plus kausale Incident-Korrelation.
-  - `agent_coordination`: policy-gated Multi-Agent-Ausführungsplanung.
+## Governance Coverage
 
-- ⚠️ **6. High-availability / Beobachtungs-/Produktivdetails**
-  - Teilweise umgesetzt über Mock- + Live-Adapter, aber ohne vollständige Produktionsinstrumentierung.
-  - Implementiert: SQL Server & Postgres Adapter mit Fallback, Query-Stats, Replikationsstatus, PII-Erkennung, Explain-Fallbacks.
+The plugin includes:
 
-- ✅ **7+ Security-Architektur (vollständiger Enterprise-Block)**
-  - Richtlinien- und Audit-Schicht mit erweiterten Kontrollwegen in `runtime/policyEngine.js` und `runtime/orchestrator.js` aktiv.
-  - Auth-/Secret-Management über env-basierte Secret-Store-Profile (`runtime/db/connector.js`).
-  - Rollen-/Actor-bewusste Produktionsgovernance inkl. Rollen- und Tool-Allowlist.
-  - Query-Allowlisting in Policy-/Dispatcher-Pfad (`queryAllowlistMode`, `queryAllowlist`) integriert.
-  - Signed-Migrations-Funktionen für vorgeschlagene/erzeugte Migrationen und Signaturprüfung in orchestrierter Ausführung.
-  - Execution-Replay führt `replay_execution` als deterministischen Re-Run mit ursprünglicher Tool- und Policy-Snapshot-Nutzung aus.
-- ✅ **5.5 Migration Engine (ausführungsnah)**
-  - `propose_migration`, `create_index`, `rollback_migration`, `optimize_query`, `create_partitioning` unterstützen `executionMode` (`dry_run`/`apply`) sowie Validierungsdurchläufe.
+- Risk classification for read and write-like actions.
+- Policy decisions with production controls.
+- Dry-run defaults for governed write-like flows.
+- Human approval requirements for elevated risk.
+- Block or sandbox-only behavior for high-risk operations.
+- Migration signing metadata and expiration checks.
+- Audit and replay support.
 
-- ✅ **Erweiterte Produktion-Sicherheitsgovernance**
-  - Rollen-/Actor-bewusste Produktionspolicy in `runtime/policyEngine.js` ergänzt.
-  - Produktions-Write-Allowed-Listen und rollenbasierte Schema-Constraints in `runtime/config.js` ergänzt.
-  - `runtime/orchestrator.js` übergibt Actor in die Policy-Evaluierung und schreibt Rollenkontext in `policyDecision`.
+## Production Readiness
 
-## Datenbeleg-Matrix (v1-Qualifikation)
+Production use requires:
 
-| Bereich | Konkreter Datenbeleg | Ergebnis |
-|---|---|---|
-| Policy-First-Ausführung | `policyDecision` enthält `policy_snapshot_id`, `risk_explainer`, `required_approvals`, `actionNodes` | ✅ vorhanden |
-| Replay-Repro | `replay_execution` liefert `replay_diff`, `replay_reproducibility`, `decisionGraph` | ✅ vorhanden |
-| KI-Intent-Kompilierung | `compile_intent` liefert `intent_contract`, `intent_round_trip` | ✅ vorhanden |
-| Signierte Migration | `propose_migration`/`create_index`/`rollback_migration` liefern `migrationArtifacts` mit `artifact_hash` und `signature` | ✅ vorhanden |
-| AST/Risikoprüfung | `classify` und `riskEngine` liefern `risk_assessment.safetyFlags` + `astParsed` | ✅ vorhanden |
-| Incident-Kausalkette | `incident_analysis` liefert `incident_causality` + MTTD/MTTR-Hinweise | ✅ vorhanden |
-| Kosten/Regression (Pilot) | `estimate_cost` liefert `estimatedImpact.regressionDelta` inkl. Baseline-Delta | 🟡 teilbelegt |
-| Cross-Engine Transfer | `cross_engine_translate` liefert `converted_sql`, `dialect`, `compatibility_flags` | ✅ vorhanden |
-| Self-Healing/Policy-Update | `self_healing_playbook`, `suggest_policy_updates` liefern Handlungsvorschläge + Risiko-Ordnung | ✅ vorhanden |
+```bash
+CODEXDB_REQUIRE_LIVE_CONNECTION=true
+CODEXDB_MIGRATION_SIGNING_KEY=<secret>
+CODEXDB_DEFAULT_ENV=production
+```
 
-## Akzeptanzkriterien (obligat) – aktuelle Füllung
+The readiness command reports blockers when live connections, migration signing,
+or configured connector requirements are missing:
 
-- NL-zu-Intent: stabiler Intent-Pfad über `compile_intent` + `intent_round_trip`.
-- Redgate-Szenario: Risiko-gestufte Pfade in `policyDecision` (low/medium/high/critical) sind dokumentiert; kritische Pfade blockiert/erhöht.
-- Migration-Flow: Draft -> Signatur -> Ausführung -> Replay -> `decisionMatch`/`replay_reproducibility`.
-- Replay-Korrektheit: Repro-ID verwendet Policy-/Tool-Snapshot und erzeugt `replay_reproducibility`.
-- RLS-Verletzung: RLS-konforme Richtlinienfaktoren werden vor Execution in `policyDecision.risk_factors` aufgenommen.
-- Kostenmodell: Vorhersage-/Regressionsfelder in `estimate_cost`.
-- Incident-Agent: Notfallfall erzeugt `incident_causality.nodes`/`edges` und priorisierte Maßnahmen.
+```bash
+npm run readiness
+npm run readiness:strict
+```
 
+## Competitive Positioning
 
-## Empfehlung für nächsten Umsetzungszyklus
-- SQL-Plan- und Kostenanalyse: echte Datenbanktreiberschritte auf produktiv stabilen Query-Engines aufbauen.
-- `retrieve_context` an pgvector/Neo4j anbinden.
-- `telemetry_correlation` mit echten OpenTelemetry- und Monitoringdaten verbinden.
+CodexDB Agent complements database IDEs, schema tools, and monitoring platforms.
+It is not a full UI replacement for SQL Prompt, DataGrip, dbForge, SSDT, SQL
+Sentry, or similar products. Its differentiator is Codex-native orchestration:
+evidence-driven recommendations, risk-aware execution gates, rollback planning,
+advisor memory, repeatable operator workflows, and an AI cognitive control
+plane that makes database operations explainable, governable, and board-ready
+before any human-approved production change.
+
+## Remaining Production Work
+
+Before a production rollout:
+
+- Configure real SQL Server or PostgreSQL connections.
+- Configure migration-signing secrets through a secret manager.
+- Run strict readiness checks against a staging database.
+- Validate selected workflows with live plans, waits, and query-store evidence.
+- Publish sanitized examples only; do not publish local runtime state.

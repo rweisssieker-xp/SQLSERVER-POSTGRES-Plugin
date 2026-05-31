@@ -1,0 +1,122 @@
+{
+  "objective_to_ops_plan": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["service", "sloTargetMs", "environment"] },
+    "output": { "required": ["usp", "autonomyMode", "measurableObjectives", "guardrails", "candidateWorkflows", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "human_approval_for_change"]
+  },
+  "autonomous_experiment_planner": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["sql", "table", "engine"] },
+    "output": { "required": ["usp", "executionMode", "experiments", "abortCriteria", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "no_real_ddl"]
+  },
+  "counterfactual_risk_engine": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["proposedChange", "riskTolerance"] },
+    "output": { "required": ["usp", "decision", "scenarios", "evidence", "confidence", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "counterfactual_only"]
+  },
+  "decision_evidence_compiler": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["evidence", "service"] },
+    "output": { "required": ["usp", "decision", "executivePacket", "missingEvidence", "confidence", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "audit_ready_evidence"]
+  },
+  "confidence_budget_manager": {
+    "version": "1.0",
+    "input": { "required": ["evidence"], "optional": ["threshold"] },
+    "output": { "required": ["usp", "decision", "confidenceBudget", "missingEvidence", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "confidence_gate_required"]
+  },
+  "autonomy_boundary_enforcer": {
+    "version": "1.0",
+    "input": { "required": ["requestedAction"], "optional": ["environment", "executionMode"] },
+    "output": { "required": ["usp", "decision", "boundary", "requiredApprovals", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "approval_boundary_required"]
+  },
+  "operator_goal_monitor": {
+    "version": "1.0",
+    "input": { "required": ["goals"], "optional": ["service"] },
+    "output": { "required": ["usp", "watchCriteria", "escalationPolicy", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "monitoring_only"]
+  },
+  "dry_run_action_critic": {
+    "version": "1.0",
+    "input": { "required": ["proposedAction"], "optional": ["hasRollback", "tenantScoped", "evidence"] },
+    "output": { "required": ["usp", "decision", "criticisms", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "critique_before_apply"]
+  },
+  "next_best_safe_action": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["candidates"] },
+    "output": { "required": ["usp", "decision", "safeNextAction", "evidence", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "safe_action_only"]
+  },
+  "autonomous_ops_briefing": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["service", "evidence", "candidates"] },
+    "output": { "required": ["usp", "decision", "boardSummary", "risks", "safeNextAction", "source"] },
+    "governance": ["closed_loop_dry_run", "no_production_apply", "board_ready_evidence"]
+  },
+  "ai_strategy_synthesizer": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["maturity", "priorities"] },
+    "output": { "required": ["usp", "positioning", "roadmap", "guardrails", "recommendations", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "human_approval_for_change"]
+  },
+  "cognitive_schema_mapper": {
+    "version": "1.0",
+    "input": { "required": ["tables"], "optional": ["domainTerms"] },
+    "output": { "required": ["usp", "ontology", "semanticGaps", "evidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "no_permission_inference"]
+  },
+  "llm_prompt_risk_auditor": {
+    "version": "1.0",
+    "input": { "required": ["prompt"], "optional": ["environment"] },
+    "output": { "required": ["usp", "decision", "risks", "safeRewrite", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "prompt_not_executed"]
+  },
+  "ai_decision_simulator": {
+    "version": "1.0",
+    "input": { "required": ["proposedAction"], "optional": ["evidence", "policy"] },
+    "output": { "required": ["usp", "decision", "simulatedDecisions", "evidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "simulation_only"]
+  },
+  "autonomous_learning_backlog": {
+    "version": "1.0",
+    "input": { "required": ["outcomes"], "optional": ["incidents"] },
+    "output": { "required": ["usp", "executionMode", "learningBacklog", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "no_model_mutation"]
+  },
+  "knowledge_gap_detector": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["evidence"] },
+    "output": { "required": ["usp", "decision", "knowledgeGaps", "safeNextAction", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "evidence_before_recommendation"]
+  },
+  "ai_trust_scorecard": {
+    "version": "1.0",
+    "input": { "required": ["evidence"], "optional": ["threshold"] },
+    "output": { "required": ["usp", "decision", "trustScore", "confidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "trust_score_not_authorization"]
+  },
+  "semantic_incident_predictor": {
+    "version": "1.0",
+    "input": { "required": ["signals"], "optional": ["workload"] },
+    "output": { "required": ["usp", "predictions", "safeNextAction", "confidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "prediction_not_remediation"]
+  },
+  "cross_agent_consensus_builder": {
+    "version": "1.0",
+    "input": { "required": ["agentFindings"], "optional": ["objective"] },
+    "output": { "required": ["usp", "decision", "consensus", "disagreements", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "preserve_disagreement"]
+  },
+  "ai_roi_narrative_generator": {
+    "version": "1.0",
+    "input": { "required": ["teamHoursSavedMonthly"], "optional": ["avoidedIncidents", "costSavingsMonthly", "sloImprovementPct"] },
+    "output": { "required": ["usp", "executiveNarrative", "roiSignals", "evidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "roi_claims_require_evidence"]
+  }
+}

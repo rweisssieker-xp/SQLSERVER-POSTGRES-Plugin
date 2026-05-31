@@ -247,15 +247,15 @@ function getPolicy() {
     }
     if (process.env.CODEXDB_RLS_REQUIRE_TENANT_CONTEXT !== undefined) {
       overrides.rls = {
-        ...overrides.rls,
         ...defaultPolicy.rls,
+        ...overrides.rls,
         requireTenantContext: asBoolean(process.env.CODEXDB_RLS_REQUIRE_TENANT_CONTEXT, defaultPolicy.rls.requireTenantContext),
       };
     }
     if (process.env.CODEXDB_RLS_TENANTS) {
       overrides.rls = {
-        ...overrides.rls,
         ...defaultPolicy.rls,
+        ...overrides.rls,
         allowedTenantIds: process.env.CODEXDB_RLS_TENANTS.split(",").map((x) => x.trim()).filter(Boolean),
       };
     }

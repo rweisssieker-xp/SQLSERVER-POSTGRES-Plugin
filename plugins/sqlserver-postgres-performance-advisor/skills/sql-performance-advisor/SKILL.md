@@ -1,6 +1,6 @@
 ---
 name: sql-performance-advisor
-description: Top-level AI/KI SQL performance advisor that orchestrates detection, rewrite candidates, ranking, workload impact, benchmarks, and consultant answer.
+description: Top-level AI SQL performance advisor that orchestrates detection, rewrite candidates, ranking, workload impact, benchmarks, and consultant answer.
 ---
 
 # SQL Performance Advisor

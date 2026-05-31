@@ -50,15 +50,36 @@ function saveState(filePath, state) {
   withRetry(() => {
     const tempFile = `${filePath}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), "utf8");
-    fs.renameSync(tempFile, filePath);
+    try {
+      fs.renameSync(tempFile, filePath);
+    } catch (error) {
+      if (error && (error.code === "EPERM" || error.code === "EACCES")) {
+        try {
+          fs.copyFileSync(tempFile, filePath);
+          fs.rmSync(tempFile, { force: true });
+        } catch (copyError) {
+          try {
+            fs.rmSync(tempFile, { force: true });
+          } catch {}
+          throw copyError;
+        }
+      } else {
+        try {
+          fs.rmSync(tempFile, { force: true });
+        } catch {}
+        throw error;
+      }
+    }
     return true;
-  });
+  }, true);
 }
 
 function remember(context, category, entry) {
   const filePath = getStateFile(context.stateFile);
   const state = loadState(filePath);
   state[category] = Array.isArray(state[category]) ? state[category] : [];
+  const categoryMaxEntries = Number(context.policy?.memory?.maxEntries || 250);
+  state[category] = state[category].slice(-Math.max(1, categoryMaxEntries - 1));
   if (category === "executionReplays") {
     const policy = context.policy || {};
     const maxEntries = Number(policy.replay?.maxEntries || 1000);

@@ -2,11 +2,19 @@
 
 - [ ] `npm install` completes on a clean checkout.
 - [ ] `npm test` passes.
+- [ ] `node --test tests/release-contracts.test.js` validates autonomous and AI USP contracts.
 - [ ] `npm audit --audit-level=moderate` passes.
 - [ ] `npm run readiness` has no unexpected blockers.
 - [ ] Production environments set `CODEXDB_REQUIRE_LIVE_CONNECTION=true`.
 - [ ] Migration signing key is configured outside source control.
 - [ ] PostgreSQL or SQL Server connection is configured for live evidence.
 - [ ] Optional Prometheus, Grafana, pgvector, and Neo4j connectors are configured when used.
+- [ ] `runtime/tool-contracts.json` matches the shipped disruptive USP tools.
+- [ ] `demos/enterprise-ai-usp-scenarios.json` covers marketplace demo flows.
+- [ ] `demos/KILLER_DEMOS.md` covers the four curated headline demos.
+- [ ] `node --test tests/killer-demos.test.js` validates demo commands and expected decisions.
+- [ ] `MARKETING.md` includes positioning, ICP, personas, USP matrix, competitive framing, listing copy, FAQ, packaging narrative, and launch blurb.
+- [ ] `demos/SALES_PLAYBOOK.md` includes discovery, qualification, demo flow, objection handling, follow-up email, and pilot success criteria.
+- [ ] `node --test tests/marketing-docs.test.js` validates marketing and sales coverage.
 - [ ] Secrets are redacted in tool output and audit logs.
 - [ ] Release notes in `CHANGELOG.md` match the shipped version.

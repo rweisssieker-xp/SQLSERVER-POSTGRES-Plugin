@@ -4195,6 +4195,505 @@ async function sqlPerformanceAdvisor(context, args = {}) {
   };
 }
 
+function normalizeAutonomyDecision(score, requestedMode = "dry_run", riskLevel = "low") {
+  const mode = safeLower(requestedMode || "dry_run");
+  const risk = safeLower(riskLevel || "low");
+  if (mode === "apply" || mode === "production_apply") return "approval_required";
+  if (risk === "critical") return "do_not_proceed";
+  if (risk === "high") return "approval_required";
+  if (Number(score || 0) < 0.55) return "needs_more_evidence";
+  return "dry_run_ready";
+}
+
+function confidenceScoreFromEvidence(evidence = {}) {
+  const weights = {
+    hasLivePlan: 0.25,
+    hasBenchmark: 0.2,
+    hasWaits: 0.15,
+    hasRollback: 0.2,
+    hasTelemetry: 0.1,
+    hasTenantScope: 0.1,
+  };
+  const score = Object.entries(weights).reduce((sum, [key, weight]) => sum + (evidence[key] ? weight : 0), 0);
+  return Number(Math.min(1, score).toFixed(2));
+}
+
+function missingEvidenceFrom(evidence = {}) {
+  return [
+    !evidence.hasLivePlan ? "live_plan" : null,
+    !evidence.hasBenchmark ? "benchmark" : null,
+    !evidence.hasWaits ? "wait_events" : null,
+    !evidence.hasRollback ? "rollback_plan" : null,
+    !evidence.hasTelemetry ? "telemetry" : null,
+  ].filter(Boolean);
+}
+
+function objectiveToOpsPlan(_context, args = {}) {
+  const objective = normalizeText(args.objective || args.goal || "stabilize database service");
+  const service = args.service || "database_service";
+  const sloTargetMs = Number(args.sloTargetMs || args.p95Ms || 300);
+  return {
+    usp: "objective_to_ops_plan",
+    objective,
+    autonomyMode: "closed_loop_dry_run",
+    measurableObjectives: [
+      { metric: "p95Ms", target: sloTargetMs, service },
+      { metric: "errorBudgetBurnRate", target: Number(args.errorBudgetBurnRate || 1), service },
+      { metric: "monthlyCost", target: Number(args.monthlyCost || args.costBudget || 0), service },
+    ].filter((item) => item.target > 0),
+    guardrails: ["no_production_apply", "no_real_ddl_execution", "human_approval_for_high_risk", "rollback_evidence_required"],
+    candidateWorkflows: [
+      "sql_performance_advisor",
+      "workload_twin",
+      "autonomous_verification_loop",
+      "production_rollout_orchestrator",
+      "policy_gated_self_healing",
+    ],
+    decision: "needs_more_evidence",
+    safeNextAction: { id: "collect_baseline_evidence", mode: "dry_run", tool: "sql_performance_advisor" },
+    source: "analysis",
+  };
+}
+
+function autonomousExperimentPlanner(_context, args = {}) {
+  const objective = normalizeText(args.objective || "improve database reliability");
+  const table = args.table || "target_table";
+  const experiments = [
+    { id: "query_rewrite_lab", tool: "ai_query_rewrite_lab", mode: "dry_run", hypothesis: "query shape can reduce IO without semantic drift" },
+    { id: "index_simulation", tool: "index_roi_simulator", mode: "dry_run", hypothesis: `index alternatives for ${table} improve p95 without high write cost` },
+    { id: "workload_twin", tool: "workload_twin", mode: "dry_run", hypothesis: "traffic and index scenario remains inside SLO budget" },
+    { id: "rollout_gate_simulation", tool: "production_rollout_orchestrator", mode: "dry_run", hypothesis: "release gates expose blockers before apply" },
+  ];
+  return {
+    usp: "autonomous_experiment_planner",
+    objective,
+    executionMode: "closed_loop_dry_run",
+    experiments,
+    abortCriteria: ["requires_real_apply", "missing_rollback", "high_risk_without_approval", "tenant_scope_unknown"],
+    decision: "dry_run_ready",
+    evidence: { experimentCount: experiments.length, sqlFingerprint: args.sql ? sha256(args.sql) : null },
+    confidence: { score: 0.68, level: "medium" },
+    safeNextAction: experiments[0],
+    source: "analysis",
+  };
+}
+
+function counterfactualRiskEngine(_context, args = {}) {
+  const proposedChange = normalizeText(args.proposedChange || args.change || "candidate_change");
+  const scenarios = [
+    { id: "do_nothing", expectedP95DeltaMs: 120, riskScore: 72, outcome: "incident_or_slo_breach_may_continue" },
+    { id: "dry_run_change", expectedP95DeltaMs: -180, riskScore: 38, outcome: "promising_but_needs_evidence" },
+    { id: "rollback_path", expectedP95DeltaMs: 40, riskScore: 28, outcome: "lower_blast_radius_if_rehearsed" },
+    { id: "defer", expectedP95DeltaMs: 80, riskScore: 51, outcome: "buys_time_but_keeps_customer_risk" },
+  ];
+  const best = scenarios.slice().sort((a, b) => a.riskScore - b.riskScore)[0];
+  const decision = normalizeAutonomyDecision(best.riskScore <= 40 ? 0.7 : 0.45, "dry_run", best.riskScore > 65 ? "high" : "low");
+  return {
+    usp: "counterfactual_risk_engine",
+    proposedChange,
+    scenarios,
+    recommendedScenario: best.id,
+    decision,
+    evidence: { scenarioCount: scenarios.length, proposedChangeFingerprint: sha256(proposedChange) },
+    confidence: { score: decision === "dry_run_ready" ? 0.7 : 0.48, level: decision === "dry_run_ready" ? "medium" : "low" },
+    safeNextAction: { id: "validate_counterfactual_with_workload_twin", mode: "dry_run", tool: "workload_twin" },
+    source: "analysis",
+  };
+}
+
+function decisionEvidenceCompiler(_context, args = {}) {
+  const objective = normalizeText(args.objective || "database operating decision");
+  const evidence = args.evidence || {};
+  const grade = advisorConfidenceGrader(_context, { evidence });
+  const missingEvidence = missingEvidenceFrom(evidence);
+  const score = confidenceScoreFromEvidence(evidence);
+  return {
+    usp: "decision_evidence_compiler",
+    executivePacket: {
+      summary: `Decision evidence for ${objective}`,
+      decisionOptions: ["dry_run_ready", "needs_more_evidence", "approval_required", "do_not_proceed"],
+      evidenceGrade: grade.grade,
+      missingEvidence,
+    },
+    decision: normalizeAutonomyDecision(score, "dry_run", args.riskLevel || "low"),
+    evidence: {
+      supplied: evidence,
+      compiledFrom: ["advisor_confidence_grader", "autonomous_verification_loop", "telemetry_correlation"],
+    },
+    missingEvidence,
+    confidence: { score, level: score >= 0.75 ? "high" : score >= 0.55 ? "medium" : "low" },
+    safeNextAction: { id: missingEvidence[0] ? `collect_${missingEvidence[0]}` : "prepare_dry_run_briefing", mode: "dry_run" },
+    source: "analysis",
+  };
+}
+
+function confidenceBudgetManager(_context, args = {}) {
+  const evidence = args.evidence || {};
+  const score = confidenceScoreFromEvidence(evidence);
+  const threshold = Number(args.threshold || 0.7);
+  const missingEvidence = missingEvidenceFrom(evidence);
+  const decision = score >= threshold ? "dry_run_ready" : "needs_more_evidence";
+  return {
+    usp: "confidence_budget_manager",
+    confidenceBudget: {
+      score,
+      threshold,
+      remainingGap: Number(Math.max(0, threshold - score).toFixed(2)),
+      status: score >= threshold ? "sufficient_for_dry_run_recommendation" : "evidence_budget_not_met",
+    },
+    decision,
+    evidence: { supplied: evidence },
+    missingEvidence,
+    confidence: { score, level: score >= 0.75 ? "high" : score >= 0.55 ? "medium" : "low" },
+    safeNextAction: { id: missingEvidence[0] ? `collect_${missingEvidence[0]}` : "compile_decision_packet", mode: "dry_run" },
+    source: "analysis",
+  };
+}
+
+function autonomyBoundaryEnforcer(_context, args = {}) {
+  const requestedAction = normalizeText(args.requestedAction || args.action || "unknown_action");
+  const executionMode = safeLower(args.executionMode || args.mode || "dry_run");
+  const environment = safeLower(args.environment || "lab");
+  const productionApply = environment === "production" && executionMode === "apply";
+  const realApply = executionMode === "apply" || /apply|execute|create|drop|alter/i.test(requestedAction);
+  const allowedAutonomousExecution = !productionApply && executionMode !== "apply";
+  return {
+    usp: "autonomy_boundary_enforcer",
+    requestedAction,
+    boundary: {
+      autonomyMode: "closed_loop_dry_run",
+      allowedAutonomousExecution,
+      prohibitedActions: ["production_apply", "real_ddl_execution", "unapproved_high_risk_change"],
+    },
+    requiredApprovals: productionApply || realApply ? ["human_operator", "db_owner"] : [],
+    decision: productionApply || realApply ? "approval_required" : "dry_run_ready",
+    evidence: { environment, executionMode },
+    confidence: { score: 0.9, level: "high" },
+    safeNextAction: { id: "convert_to_dry_run", mode: "dry_run", originalAction: requestedAction },
+    source: "analysis",
+  };
+}
+
+function operatorGoalMonitor(_context, args = {}) {
+  const service = args.service || "database_service";
+  const goals = args.goals || {};
+  const watchCriteria = [
+    goals.p95Ms ? { metric: "p95Ms", operator: "<=", threshold: Number(goals.p95Ms), service } : null,
+    goals.monthlyCost ? { metric: "monthlyCost", operator: "<=", threshold: Number(goals.monthlyCost), service } : null,
+    goals.maxIncidentSeverity ? { metric: "incidentSeverity", operator: "<=", threshold: goals.maxIncidentSeverity, service } : null,
+    goals.errorBudgetBurnRate ? { metric: "errorBudgetBurnRate", operator: "<=", threshold: Number(goals.errorBudgetBurnRate), service } : null,
+  ].filter(Boolean);
+  return {
+    usp: "operator_goal_monitor",
+    service,
+    watchCriteria: watchCriteria.length ? watchCriteria : [{ metric: "p95Ms", operator: "<=", threshold: 300, service }],
+    escalationPolicy: {
+      low: "continue_closed_loop_monitoring",
+      medium: "open_dry_run_experiment",
+      high: "human_operator_review",
+    },
+    decision: "dry_run_ready",
+    evidence: { goalCount: watchCriteria.length },
+    confidence: { score: 0.74, level: "medium" },
+    safeNextAction: { id: "schedule_goal_watch", mode: "dry_run", tool: "telemetry_correlation" },
+    source: "analysis",
+  };
+}
+
+function dryRunActionCritic(_context, args = {}) {
+  const evidence = args.evidence || {};
+  const criticisms = [];
+  if (!args.hasRollback && !evidence.hasRollback) criticisms.push("rollback_gap");
+  if (!args.tenantScoped && !evidence.hasTenantScope) criticisms.push("tenant_blast_radius_unknown");
+  if (!evidence.hasLivePlan) criticisms.push("live_plan_missing");
+  if (/drop|truncate|delete|alter/i.test(String(args.proposedAction || ""))) criticisms.push("destructive_or_schema_change_risk");
+  const decision = criticisms.includes("destructive_or_schema_change_risk")
+    ? "approval_required"
+    : criticisms.length ? "needs_more_evidence" : "dry_run_ready";
+  return {
+    usp: "dry_run_action_critic",
+    proposedAction: args.proposedAction || "candidate_action",
+    criticisms,
+    decision,
+    evidence: { criticismCount: criticisms.length, supplied: evidence },
+    confidence: { score: criticisms.length ? 0.52 : 0.78, level: criticisms.length ? "low" : "high" },
+    safeNextAction: { id: criticisms[0] ? `resolve_${criticisms[0]}` : "proceed_to_dry_run_experiment", mode: "dry_run" },
+    source: "analysis",
+  };
+}
+
+function nextBestSafeAction(_context, args = {}) {
+  const candidates = Array.isArray(args.candidates) && args.candidates.length
+    ? args.candidates
+    : [
+        { id: "run_sql_performance_advisor", action: "collect advisor diagnosis", risk: "low", mode: "dry_run", tool: "sql_performance_advisor" },
+        { id: "run_workload_twin", action: "simulate workload scenario", risk: "low", mode: "dry_run", tool: "workload_twin" },
+      ];
+  const safeCandidates = candidates.filter((candidate) =>
+    safeLower(candidate.mode || "dry_run") !== "apply" &&
+    safeLower(candidate.risk || "low") !== "high" &&
+    !/apply|execute production|drop|truncate/i.test(String(candidate.action || candidate.id || ""))
+  );
+  const safeNextAction = safeCandidates[0] || { id: "collect_more_evidence", action: "collect more evidence", risk: "low", mode: "dry_run" };
+  return {
+    usp: "next_best_safe_action",
+    objective: args.objective || "database operating objective",
+    safeNextAction,
+    rejectedActions: candidates.filter((candidate) => candidate !== safeNextAction && !safeCandidates.includes(candidate)).map((candidate) => candidate.id),
+    decision: safeNextAction.id === "collect_more_evidence" ? "needs_more_evidence" : "dry_run_ready",
+    evidence: { candidateCount: candidates.length, safeCandidateCount: safeCandidates.length },
+    confidence: { score: safeCandidates.length ? 0.76 : 0.45, level: safeCandidates.length ? "medium" : "low" },
+    source: "analysis",
+  };
+}
+
+async function autonomousOpsBriefing(context, args = {}) {
+  const objective = normalizeText(args.objective || "database operating objective");
+  const evidencePacket = decisionEvidenceCompiler(context, args);
+  const nextAction = nextBestSafeAction(context, args);
+  const boundary = autonomyBoundaryEnforcer(context, { ...args, executionMode: args.executionMode || "dry_run" });
+  const decision = boundary.decision === "approval_required"
+    ? "approval_required"
+    : evidencePacket.decision === "dry_run_ready" && nextAction.decision === "dry_run_ready"
+      ? "dry_run_ready"
+      : "needs_more_evidence";
+  return {
+    usp: "autonomous_ops_briefing",
+    boardSummary: `Autonomous Database Operations without autonomous production risk: ${objective}`,
+    decision,
+    evidence: {
+      executivePacket: evidencePacket.executivePacket,
+      boundary: boundary.boundary,
+      rejectedActions: nextAction.rejectedActions,
+    },
+    confidence: evidencePacket.confidence,
+    risks: [
+      ...(evidencePacket.missingEvidence || []).map((item) => `missing_${item}`),
+      ...(boundary.requiredApprovals.length ? ["approval_required_for_requested_boundary"] : []),
+    ],
+    safeNextAction: nextAction.safeNextAction,
+    source: "analysis",
+  };
+}
+
+async function aiStrategySynthesizer(_context, args = {}) {
+  const objective = normalizeText(args.objective || "AI-native database operations");
+  const priorities = Array.isArray(args.priorities) && args.priorities.length
+    ? args.priorities.map(normalizeText)
+    : ["latency", "governance", "cost"];
+  const roadmap = [
+    { phase: "sense", capability: "unify telemetry, query plans, policy, and cost evidence", owner: "platform_team" },
+    { phase: "reason", capability: "score recommendations with explainability and confidence budgets", owner: "ai_ops_lead" },
+    { phase: "simulate", capability: "run dry-run workload, rollout, and counterfactual experiments", owner: "dba_sre_pair" },
+    { phase: "govern", capability: "convert AI decisions into approval-ready packets", owner: "change_advisory_board" },
+  ];
+  return {
+    usp: "ai_strategy_synthesizer",
+    positioning: "AI database intelligence layer for enterprise platform teams",
+    objective,
+    maturity: normalizeText(args.maturity || "pilot"),
+    priorities,
+    roadmap,
+    guardrails: ["closed_loop_dry_run", "no_production_apply", "human_approval_for_change", "audit_ready_evidence"],
+    recommendations: priorities.map((priority) => `AI control loop for ${priority}`),
+    evidence: ["business_objective", "platform_priorities", "existing_codexdb_primitives"],
+    confidence: { score: 0.74, level: "medium" },
+    source: "analysis",
+  };
+}
+
+async function cognitiveSchemaMapper(_context, args = {}) {
+  const tables = Array.isArray(args.tables) && args.tables.length ? args.tables.map(normalizeText) : ["orders", "customers"];
+  const domainTerms = Array.isArray(args.domainTerms) ? args.domainTerms.map(normalizeText) : [];
+  const entities = tables.map((table) => ({
+    name: table,
+    semanticRole: table.includes("order") ? "transaction" : table.includes("customer") ? "party" : table.includes("payment") ? "money_movement" : "domain_entity",
+    likelyMetrics: table.includes("order") ? ["conversion", "checkout_latency"] : table.includes("payment") ? ["revenue", "authorization_rate"] : ["volume", "freshness"],
+  }));
+  const mappedTerms = new Set(entities.flatMap((entity) => [entity.name, entity.semanticRole, ...entity.likelyMetrics]));
+  const semanticGaps = domainTerms.filter((term) => !mappedTerms.has(term) && !tables.some((table) => table.includes(term)));
+  return {
+    usp: "cognitive_schema_mapper",
+    ontology: { entities, relationships: tables.includes("orders") && tables.includes("customers") ? ["customers_to_orders"] : [] },
+    semanticGaps,
+    recommendations: semanticGaps.map((gap) => `add business glossary mapping for ${gap}`),
+    evidence: ["schema_terms", "domain_terms", "deterministic_semantic_roles"],
+    confidence: { score: semanticGaps.length ? 0.68 : 0.8, level: semanticGaps.length ? "medium" : "high" },
+    source: "analysis",
+  };
+}
+
+async function llmPromptRiskAuditor(_context, args = {}) {
+  const prompt = normalizeText(args.prompt || "");
+  const environment = normalizeText(args.environment || "lab");
+  const risks = [];
+  if (/\b(drop|delete|truncate|update all|alter|create index|apply)\b/i.test(prompt)) risks.push("destructive_intent");
+  if (/\bproduction|prod\b/i.test(`${prompt} ${environment}`)) risks.push("production_scope");
+  if (/\bfix|optimize|make it fast|do it\b/i.test(prompt)) risks.push("ambiguous_objective");
+  if (!/\bwhere|tenant|limit|dry[- ]run|explain|simulate\b/i.test(prompt)) risks.push("missing_scope_controls");
+  const decision = risks.includes("destructive_intent") || risks.includes("production_scope")
+    ? "approval_required"
+    : risks.length
+      ? "needs_more_evidence"
+      : "dry_run_ready";
+  return {
+    usp: "llm_prompt_risk_auditor",
+    decision,
+    risks,
+    safeRewrite: "Convert the AI request into a dry-run diagnostic objective with explicit scope, tenant boundary, rollback proof, and approval gate.",
+    evidence: ["prompt_text", "environment", "risk_keyword_scan"],
+    confidence: { score: risks.length ? 0.78 : 0.7, level: "medium" },
+    source: "analysis",
+  };
+}
+
+async function aiDecisionSimulator(_context, args = {}) {
+  const evidence = args.evidence || {};
+  const requireHumanApproval = Boolean(args.policy && args.policy.requireHumanApproval);
+  const score = confidenceScoreFromEvidence(evidence);
+  const simulatedDecisions = [
+    { id: "dry_run_diagnostic", outcome: "collect plan, waits, cost, and tenant evidence", score: 0.82 },
+    { id: "defer_for_approval", outcome: "prepare decision packet for human review", score: requireHumanApproval ? 0.9 : 0.55 },
+    { id: "reject_apply", outcome: "block real production apply from AI autonomy", score: 1 },
+  ];
+  if (!evidence.hasRollback) simulatedDecisions.push({ id: "rollback_gap", outcome: "require rollback rehearsal before recommendation", score: 0.86 });
+  const decision = requireHumanApproval ? "approval_required" : normalizeAutonomyDecision({ score, mode: "dry_run" });
+  return {
+    usp: "ai_decision_simulator",
+    proposedAction: normalizeText(args.proposedAction || "database action"),
+    simulatedDecisions,
+    decision,
+    evidence: { confidenceEvidenceScore: score, policy: args.policy || {}, inputEvidence: evidence },
+    confidence: { score: Number(Math.max(score, 0.6).toFixed(2)), level: score >= 0.75 ? "high" : "medium" },
+    source: "analysis",
+  };
+}
+
+async function autonomousLearningBacklog(_context, args = {}) {
+  const outcomes = Array.isArray(args.outcomes) ? args.outcomes : [];
+  const incidents = Array.isArray(args.incidents) ? args.incidents : [];
+  const learningBacklog = [
+    { id: "rollback-proof-learning", task: "learn which recommendations lack rollback evidence", priority: outcomes.some((item) => /rollback/i.test(JSON.stringify(item))) ? 95 : 72 },
+    { id: "incident-pattern-learning", task: "cluster incident narratives into recurring database failure modes", priority: incidents.length ? 88 : 62 },
+    { id: "confidence-calibration", task: "compare advisor confidence against observed outcomes", priority: 80 },
+    { id: "prompt-risk-hardening", task: "turn unsafe AI prompts into governed dry-run templates", priority: 74 },
+  ].sort((a, b) => b.priority - a.priority);
+  return {
+    usp: "autonomous_learning_backlog",
+    executionMode: "analysis_only",
+    learningBacklog,
+    evidence: ["advisor_outcomes", "incident_feedback", "governance_gaps"],
+    confidence: { score: outcomes.length || incidents.length ? 0.77 : 0.58, level: outcomes.length || incidents.length ? "medium" : "low" },
+    source: "analysis",
+  };
+}
+
+async function knowledgeGapDetector(_context, args = {}) {
+  const evidence = args.evidence || {};
+  const required = [
+    ["hasSchema", "schema_context"],
+    ["hasLivePlan", "live_execution_plan"],
+    ["hasTelemetry", "telemetry_correlation"],
+    ["hasPolicy", "policy_context"],
+    ["hasRollback", "rollback_evidence"],
+  ];
+  const knowledgeGaps = required.filter(([key]) => !evidence[key]).map(([, label]) => label);
+  return {
+    usp: "knowledge_gap_detector",
+    objective: normalizeText(args.objective || "AI database recommendation"),
+    decision: knowledgeGaps.length ? "needs_more_evidence" : "dry_run_ready",
+    knowledgeGaps,
+    evidence: { provided: Object.keys(evidence), required: required.map(([, label]) => label) },
+    safeNextAction: knowledgeGaps[0] ? { mode: "dry_run", action: `collect_${knowledgeGaps[0]}` } : { mode: "dry_run", action: "compile_decision_evidence" },
+    confidence: { score: Number(((required.length - knowledgeGaps.length) / required.length).toFixed(2)), level: knowledgeGaps.length ? "medium" : "high" },
+    source: "analysis",
+  };
+}
+
+async function aiTrustScorecard(_context, args = {}) {
+  const evidence = args.evidence || {};
+  const dimensions = {
+    explainability: evidence.hasExplanation ? 1 : 0.35,
+    safety: evidence.hasRollback ? 0.85 : 0.35,
+    reproducibility: evidence.hasReplay ? 0.9 : 0.4,
+    governance: evidence.hasPolicy ? 0.9 : 0.3,
+  };
+  const total = Number((Object.values(dimensions).reduce((sum, value) => sum + value, 0) / 4).toFixed(2));
+  return {
+    usp: "ai_trust_scorecard",
+    trustScore: { total, dimensions },
+    decision: total >= 0.75 ? "dry_run_ready" : "needs_more_evidence",
+    evidence: ["explainability", "safety", "reproducibility", "governance"],
+    confidence: { score: total, level: total >= 0.75 ? "high" : "medium" },
+    source: "analysis",
+  };
+}
+
+async function semanticIncidentPredictor(_context, args = {}) {
+  const signals = Array.isArray(args.signals) ? args.signals.map(normalizeText) : [];
+  const joined = signals.join(" ");
+  const predictions = [
+    { incidentClass: "lock_contention", likelihood: /\block|deadlock|wait\b/i.test(joined) ? 0.84 : 0.42, evidence: "lock and wait semantics" },
+    { incidentClass: "plan_regression", likelihood: /\bstale|statistics|plan|cardinality\b/i.test(joined) ? 0.78 : 0.38, evidence: "optimizer and statistics semantics" },
+    { incidentClass: "tenant_hotspot", likelihood: /\btenant|hot key|skew|noisy\b/i.test(joined) ? 0.8 : 0.36, evidence: "tenant and skew semantics" },
+    { incidentClass: "cost_runaway", likelihood: /\bcost|scan|io|cpu\b/i.test(joined) ? 0.72 : 0.33, evidence: "resource pressure semantics" },
+  ].sort((a, b) => b.likelihood - a.likelihood);
+  return {
+    usp: "semantic_incident_predictor",
+    workload: normalizeText(args.workload || "database workload"),
+    predictions,
+    decision: predictions[0].likelihood >= 0.75 ? "needs_more_evidence" : "dry_run_ready",
+    safeNextAction: { mode: "dry_run", action: `run_${predictions[0].incidentClass}_diagnostics` },
+    confidence: { score: predictions[0].likelihood, level: predictions[0].likelihood >= 0.75 ? "medium" : "low" },
+    source: "analysis",
+  };
+}
+
+async function crossAgentConsensusBuilder(_context, args = {}) {
+  const findings = Array.isArray(args.agentFindings) ? args.agentFindings : [];
+  const groups = findings.reduce((acc, finding) => {
+    const key = normalizeText(finding.recommendation || "collect more evidence");
+    acc[key] = acc[key] || [];
+    acc[key].push(finding);
+    return acc;
+  }, {});
+  const sorted = Object.entries(groups).sort(([, a], [, b]) => b.length - a.length);
+  const [topRecommendation = "collect more evidence", supporters = []] = sorted[0] || [];
+  const disagreements = sorted.slice(1).map(([recommendation, agents]) => ({ recommendation, agents: agents.map((item) => item.agent || "agent") }));
+  const averageConfidence = findings.length
+    ? findings.reduce((sum, finding) => sum + Number(finding.confidence || 0.5), 0) / findings.length
+    : 0.5;
+  return {
+    usp: "cross_agent_consensus_builder",
+    consensus: {
+      recommendation: topRecommendation,
+      supportingAgents: supporters.map((item) => item.agent || "agent"),
+      agreementRatio: findings.length ? Number((supporters.length / findings.length).toFixed(2)) : 0,
+    },
+    disagreements,
+    decision: disagreements.length ? "needs_more_evidence" : "dry_run_ready",
+    evidence: findings,
+    confidence: { score: Number(averageConfidence.toFixed(2)), level: averageConfidence >= 0.75 ? "high" : "medium" },
+    source: "analysis",
+  };
+}
+
+async function aiRoiNarrativeGenerator(_context, args = {}) {
+  const teamHours = Number(args.teamHoursSavedMonthly || 0);
+  const incidents = Number(args.avoidedIncidents || 0);
+  const costSavings = Number(args.costSavingsMonthly || 0);
+  const sloImprovement = Number(args.sloImprovementPct || 0);
+  const monthlyValueScore = Number((teamHours * 120 + incidents * 10000 + costSavings + sloImprovement * 500).toFixed(2));
+  return {
+    usp: "ai_roi_narrative_generator",
+    executiveNarrative: `AI database operations can convert expert DBA reasoning into repeatable dry-run decisions, reducing toil, incident exposure, and cost while keeping production control with humans.`,
+    roiSignals: { teamHoursSavedMonthly: teamHours, avoidedIncidents: incidents, costSavingsMonthly: costSavings, sloImprovementPct: sloImprovement, monthlyValueScore },
+    evidence: ["team_hours_saved", "avoided_incidents", "cost_savings", "slo_improvement"],
+    confidence: { score: monthlyValueScore > 0 ? 0.76 : 0.45, level: monthlyValueScore > 0 ? "medium" : "low" },
+    source: "analysis",
+  };
+}
+
 async function agentCoordination(_context, args = {}) {
   const objective = normalizeText(args.objective || "database optimization task");
   const riskLevel = normalizeText(args.riskLevel || "LOW").toUpperCase();
@@ -4343,6 +4842,26 @@ const toolHandlers = {
   workload_impact_analyzer: (ctx, a) => workloadImpactAnalyzer(ctx, a),
   consultant_brain: (ctx, a) => consultantBrain(ctx, a),
   sql_performance_advisor: (ctx, a) => sqlPerformanceAdvisor(ctx, a),
+  objective_to_ops_plan: (ctx, a) => objectiveToOpsPlan(ctx, a),
+  autonomous_experiment_planner: (ctx, a) => autonomousExperimentPlanner(ctx, a),
+  counterfactual_risk_engine: (ctx, a) => counterfactualRiskEngine(ctx, a),
+  decision_evidence_compiler: (ctx, a) => decisionEvidenceCompiler(ctx, a),
+  confidence_budget_manager: (ctx, a) => confidenceBudgetManager(ctx, a),
+  autonomy_boundary_enforcer: (ctx, a) => autonomyBoundaryEnforcer(ctx, a),
+  operator_goal_monitor: (ctx, a) => operatorGoalMonitor(ctx, a),
+  dry_run_action_critic: (ctx, a) => dryRunActionCritic(ctx, a),
+  next_best_safe_action: (ctx, a) => nextBestSafeAction(ctx, a),
+  autonomous_ops_briefing: (ctx, a) => autonomousOpsBriefing(ctx, a),
+  ai_strategy_synthesizer: (ctx, a) => aiStrategySynthesizer(ctx, a),
+  cognitive_schema_mapper: (ctx, a) => cognitiveSchemaMapper(ctx, a),
+  llm_prompt_risk_auditor: (ctx, a) => llmPromptRiskAuditor(ctx, a),
+  ai_decision_simulator: (ctx, a) => aiDecisionSimulator(ctx, a),
+  autonomous_learning_backlog: (ctx, a) => autonomousLearningBacklog(ctx, a),
+  knowledge_gap_detector: (ctx, a) => knowledgeGapDetector(ctx, a),
+  ai_trust_scorecard: (ctx, a) => aiTrustScorecard(ctx, a),
+  semantic_incident_predictor: (ctx, a) => semanticIncidentPredictor(ctx, a),
+  cross_agent_consensus_builder: (ctx, a) => crossAgentConsensusBuilder(ctx, a),
+  ai_roi_narrative_generator: (ctx, a) => aiRoiNarrativeGenerator(ctx, a),
   incident_analysis: (ctx) => incidentAnalysis(ctx),
   incident_causal_graph: (ctx, a) => incidentAnalysis(ctx, a),
   compile_intent: (ctx, a) => compileIntent(ctx, a),

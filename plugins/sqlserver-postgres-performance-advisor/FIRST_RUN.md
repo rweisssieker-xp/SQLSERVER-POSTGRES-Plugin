@@ -20,7 +20,32 @@ npm test
 npm run readiness
 ```
 
-5. For production, set:
+5. Run the AI USP contract smoke test:
+
+```bash
+node --test tests/release-contracts.test.js
+```
+
+6. Try a closed-loop dry-run demo:
+
+```bash
+node runtime/runTool.js knowledge_gap_detector '{"objective":"recommend production index","evidence":{"hasSchema":true,"hasLivePlan":false,"hasTelemetry":false,"hasPolicy":true}}'
+```
+
+7. Review the curated killer demos:
+
+```text
+demos/KILLER_DEMOS.md
+```
+
+8. Review the launch messaging and sales flow:
+
+```text
+MARKETING.md
+demos/SALES_PLAYBOOK.md
+```
+
+9. For production, set:
 
 ```bash
 CODEXDB_REQUIRE_LIVE_CONNECTION=true
