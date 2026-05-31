@@ -2,6 +2,8 @@
 
 - [ ] `npm install` completes on a clean checkout.
 - [ ] `npm test` passes.
+- [ ] Repository root contains `.codex-plugin/plugin.json` for marketplace scanning.
+- [ ] `node --test tests/submission-artifact.test.js` validates the required root manifest and the 128-file submission limit.
 - [ ] `node --test tests/release-contracts.test.js` validates autonomous and AI USP contracts.
 - [ ] `npm audit --audit-level=moderate` passes.
 - [ ] `npm run readiness` has no unexpected blockers.

@@ -43,8 +43,11 @@ SUPPORT.md
 MARKETPLACE.md
 ```
 
-Only `plugin.json` is stored inside `.codex-plugin/`, matching the Codex
-Marketplace plugin layout.
+The repository root also contains `.codex-plugin/plugin.json`, because the
+marketplace scanner expects the required manifest at the submitted artifact
+root. The plugin keeps a compact marketplace skill set to stay within the
+128-file scan limit; executable runtime tools are declared in
+`runtime/tool-manifest.json`.
 
 ## Installation
 

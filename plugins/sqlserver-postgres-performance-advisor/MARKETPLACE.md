@@ -20,14 +20,21 @@ npx codex-marketplace add rweisssieker-xp/SQLSERVER-POSTGRES-Plugin/plugins/sqls
 
 ## Required Manifest
 
-The plugin manifest is located at:
+The marketplace scanner expects a plugin manifest at the repository root:
 
 ```text
 .codex-plugin/plugin.json
 ```
 
-Only `plugin.json` is stored inside `.codex-plugin/`, matching the marketplace
-layout guidance.
+The nested plugin directory also keeps its local manifest for development:
+
+```text
+plugins/sqlserver-postgres-performance-advisor/.codex-plugin/plugin.json
+```
+
+The submitted artifact must stay at or below the scanner file-count limit of
+128 files. The repository keeps a compact marketplace skill set for submission
+while the runtime manifest remains the source of truth for executable tools.
 
 ## Safety Positioning
 

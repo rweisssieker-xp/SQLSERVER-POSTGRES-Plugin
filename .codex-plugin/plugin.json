@@ -1,0 +1,37 @@
+{
+  "name": "sqlserver-postgres-performance-advisor",
+  "version": "1.0.0+codex.20260530161208",
+  "description": "AI-native, governance-first SQL Server and PostgreSQL orchestration plugin.",
+  "author": {
+    "name": "rweisssieker-xp",
+    "url": "https://github.com/rweisssieker-xp"
+  },
+  "homepage": "https://github.com/rweisssieker-xp/SQLSERVER-POSTGRES-Plugin",
+  "repository": "https://github.com/rweisssieker-xp/SQLSERVER-POSTGRES-Plugin",
+  "license": "MIT",
+  "keywords": [
+    "sqlserver",
+    "postgres",
+    "database",
+    "performance",
+    "governance",
+    "devops"
+  ],
+  "skills": "./plugins/sqlserver-postgres-performance-advisor/skills/",
+  "interface": {
+    "displayName": "CodexDB Agent",
+    "shortDescription": "Safety-governed SQL Server and PostgreSQL agentic DB operations.",
+    "longDescription": "CodexDB Agent implements SQL read tooling, governed write workflows, risk-based execution controls, explainability, and compliance-oriented operations for SQL Server and PostgreSQL.",
+    "developerName": "rweisssieker-xp",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/rweisssieker-xp/SQLSERVER-POSTGRES-Plugin",
+    "defaultPrompt": [
+      "Use CodexDB Agent for governance-aware SQL Server and PostgreSQL analysis and operations."
+    ],
+    "brandColor": "#10A37F"
+  }
+}
