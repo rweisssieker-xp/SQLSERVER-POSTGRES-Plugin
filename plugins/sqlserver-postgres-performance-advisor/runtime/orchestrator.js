@@ -4694,6 +4694,222 @@ async function aiRoiNarrativeGenerator(_context, args = {}) {
   };
 }
 
+async function liveEvidenceSmokeProfile(_context, args = {}) {
+  const engine = normalizeText(args.engine || "postgres");
+  const evidence = args.evidence || {};
+  const requiredEvidence = engine === "sqlserver"
+    ? ["live_connection", "query_store_or_dmvs", "showplan_xml", "wait_stats", "lock_snapshot"]
+    : ["live_connection", "pg_stat_statements", "explain_plan", "wait_events", "lock_snapshot"];
+  const evidenceMap = {
+    live_connection: evidence.hasLiveConnection,
+    pg_stat_statements: evidence.hasPgStatStatements,
+    explain_plan: evidence.hasExplainPlan,
+    wait_events: evidence.hasWaitEvents,
+    lock_snapshot: evidence.hasLockSnapshot,
+    query_store_or_dmvs: evidence.hasQueryStore || evidence.hasDmvs,
+    showplan_xml: evidence.hasShowplanXml || evidence.hasExplainPlan,
+    wait_stats: evidence.hasWaitStats,
+  };
+  const missingEvidence = requiredEvidence.filter((item) => !evidenceMap[item]);
+  return {
+    usp: "live_evidence_smoke_profile",
+    engine,
+    decision: missingEvidence.length > requiredEvidence.length / 2 ? "needs_more_evidence" : "dry_run_ready",
+    requiredEvidence,
+    missingEvidence,
+    smokeCommands: [
+      "production_readiness_check",
+      "query_stats",
+      "explain_query",
+      "telemetry_correlation",
+    ],
+    confidence: { score: Number(((requiredEvidence.length - missingEvidence.length) / requiredEvidence.length).toFixed(2)), level: missingEvidence.length ? "medium" : "high" },
+    source: "analysis",
+  };
+}
+
+async function formalContractCatalog(_context, args = {}) {
+  const tools = Array.isArray(args.tools) && args.tools.length
+    ? args.tools.map(normalizeText)
+    : ["autonomous_ops_briefing", "llm_prompt_risk_auditor", "governance_proof_packet"];
+  const contracts = tools.map((tool) => ({
+    tool,
+    version: "1.0",
+    requiredOutputFields: ["usp", "source", "confidence"],
+    governance: ["no_production_apply", "structured_output", "stable_contract"],
+  }));
+  return {
+    usp: "formal_contract_catalog",
+    decision: "dry_run_ready",
+    contracts,
+    evidence: ["runtime_tool_manifest", "tool_contracts_json", "deterministic_dispatch"],
+    confidence: { score: 0.82, level: "high" },
+    source: "analysis",
+  };
+}
+
+async function governanceProofPacket(_context, args = {}) {
+  const evidence = args.evidence || {};
+  const policyDecision = normalizeText(args.policyDecision || "REQUIRES_APPROVAL").toUpperCase();
+  const approvalRequired = policyDecision.includes("APPROVAL") || args.productionApplyRequested;
+  return {
+    usp: "governance_proof_packet",
+    decision: approvalRequired ? "approval_required" : "dry_run_ready",
+    proofPacket: {
+      action: normalizeText(args.action || "database decision"),
+      policyDecision,
+      riskScore: evidence.hasRollback && evidence.hasPolicy ? 0.42 : 0.68,
+      evidence: {
+        rollbackProof: Boolean(evidence.hasRollback),
+        policyContext: Boolean(evidence.hasPolicy),
+        liveEvidence: Boolean(evidence.hasLivePlan || evidence.hasTelemetry),
+      },
+      requiredApprovals: approvalRequired ? ["human_operator", "change_owner"] : [],
+      rollbackProof: evidence.hasRollback ? "present" : "missing",
+      auditReady: Boolean(evidence.hasPolicy),
+    },
+    confidence: { score: evidence.hasRollback && evidence.hasPolicy ? 0.82 : 0.58, level: evidence.hasRollback && evidence.hasPolicy ? "high" : "medium" },
+    source: "analysis",
+  };
+}
+
+async function benchmarkRoiProof(_context, args = {}) {
+  const baselineP95 = Number(args.baselineP95Ms || 0);
+  const candidateP95 = Number(args.candidateP95Ms || baselineP95);
+  const baselineCost = Number(args.baselineMonthlyCost || 0);
+  const candidateCost = Number(args.candidateMonthlyCost || baselineCost);
+  const latencyImprovementPct = baselineP95 > 0 ? Number((((baselineP95 - candidateP95) / baselineP95) * 100).toFixed(1)) : 0;
+  const monthlyCostSavings = Number((baselineCost - candidateCost).toFixed(2));
+  return {
+    usp: "benchmark_roi_proof",
+    decision: latencyImprovementPct > 0 || monthlyCostSavings > 0 ? "dry_run_ready" : "needs_more_evidence",
+    roiProof: {
+      baselineP95Ms: baselineP95,
+      candidateP95Ms: candidateP95,
+      latencyImprovementPct,
+      baselineMonthlyCost: baselineCost,
+      candidateMonthlyCost: candidateCost,
+      monthlyCostSavings,
+      proofType: "measured_before_after",
+    },
+    evidence: ["baseline_metrics", "candidate_metrics", "cost_delta"],
+    confidence: { score: baselineP95 && candidateP95 ? 0.8 : 0.45, level: baselineP95 && candidateP95 ? "high" : "low" },
+    source: "analysis",
+  };
+}
+
+async function pilotSuccessPack(_context, args = {}) {
+  const service = normalizeText(args.service || "representative_service");
+  const engine = normalizeText(args.engine || "postgres");
+  return {
+    usp: "pilot_success_pack",
+    service,
+    engine,
+    timelineMinutes: 30,
+    steps: [
+      { minute: 0, action: "confirm dry-run boundary and staging target" },
+      { minute: 5, action: "run production_readiness_check" },
+      { minute: 10, action: "run live_evidence_smoke_profile" },
+      { minute: 15, action: "run autonomous_ops_briefing" },
+      { minute: 22, action: "run visual_executive_report" },
+      { minute: 28, action: "review pilot success criteria" },
+    ],
+    successCriteria: [
+      "unsafe apply action is blocked",
+      "missing evidence is explicit",
+      "safe next action remains dry-run",
+      "executive report is generated",
+      "DBA/SRE owner accepts the governance boundary",
+    ],
+    source: "analysis",
+  };
+}
+
+async function visualExecutiveReport(_context, args = {}) {
+  const objective = normalizeText(args.objective || "database operations objective");
+  const decision = normalizeText(args.decision || "needs_more_evidence");
+  const confidence = args.confidence || { score: 0.72, level: "medium" };
+  const risks = Array.isArray(args.risks) && args.risks.length ? args.risks : ["missing live benchmark evidence"];
+  const nextAction = args.safeNextAction || { mode: "dry_run", action: "collect live evidence and compile governance proof" };
+  const reportMarkdown = [
+    "# Executive Database Operations Report",
+    "",
+    `## Objective`,
+    objective,
+    "",
+    "## Decision",
+    decision,
+    "",
+    "## Confidence",
+    `${confidence.level || "medium"} (${confidence.score || 0.72})`,
+    "",
+    "## Key Risks",
+    ...risks.map((risk) => `- ${risk}`),
+    "",
+    "## Safe Next Action",
+    `- ${nextAction.mode}: ${nextAction.action}`,
+  ].join("\n");
+  return {
+    usp: "visual_executive_report",
+    decision,
+    reportMarkdown,
+    format: "markdown",
+    confidence,
+    source: "analysis",
+  };
+}
+
+async function enterpriseSecurityProof(_context, args = {}) {
+  const productionApplyRequested = Boolean(args.productionApplyRequested);
+  const secretsRedacted = Boolean(args.secretsRedacted);
+  const tenantScoped = Boolean(args.tenantScoped);
+  return {
+    usp: "enterprise_security_proof",
+    decision: productionApplyRequested ? "approval_required" : secretsRedacted && tenantScoped ? "dry_run_ready" : "needs_more_evidence",
+    securityBoundary: {
+      zeroAutonomousWrite: true,
+      noProductionApply: true,
+      noRealDdlExecution: true,
+      secretsRedacted,
+      tenantScoped,
+      humanApprovalForWrites: true,
+    },
+    proof: [
+      "policy gate blocks high-risk write actions",
+      "dry-run operator boundary rejects production apply",
+      "secret-bearing connector outputs are redacted",
+      "tenant scope is explicit before recommendation",
+    ],
+    confidence: { score: secretsRedacted && tenantScoped ? 0.86 : 0.62, level: secretsRedacted && tenantScoped ? "high" : "medium" },
+    source: "analysis",
+  };
+}
+
+async function competitiveBattlecards(_context, args = {}) {
+  const competitors = Array.isArray(args.competitors) && args.competitors.length
+    ? args.competitors.map(normalizeText)
+    : ["generic_ai_copilot", "monitoring_tool", "sql_ide"];
+  const battlecards = competitors.map((competitor) => {
+    const positions = {
+      generic_ai_copilot: ["CodexDB is deterministic, policy-aware, rollback-aware, and dry-run bounded.", "Generic AI may produce SQL; CodexDB produces governed database decisions."],
+      monitoring_tool: ["Monitoring shows symptoms; CodexDB converts signals into decision evidence and safe next actions.", "CodexDB complements Grafana, Prometheus, SQL Sentry, and telemetry systems."],
+      sql_ide: ["SQL IDEs help edit and inspect SQL; CodexDB governs AI-assisted operational decisions.", "CodexDB complements SSMS, DataGrip, dbForge, and SQL Prompt."],
+    };
+    return {
+      competitor,
+      buyerConcern: competitor.includes("ai") ? "unsafe autonomous recommendations" : "tooling overlap",
+      differentiation: positions[competitor] || ["CodexDB adds closed-loop AI governance around database operations."],
+      winningMessage: "AI-speed database operations with human-controlled production boundaries.",
+    };
+  });
+  return {
+    usp: "competitive_battlecards",
+    decision: "dry_run_ready",
+    battlecards,
+    source: "analysis",
+  };
+}
+
 async function agentCoordination(_context, args = {}) {
   const objective = normalizeText(args.objective || "database optimization task");
   const riskLevel = normalizeText(args.riskLevel || "LOW").toUpperCase();
@@ -4862,6 +5078,14 @@ const toolHandlers = {
   semantic_incident_predictor: (ctx, a) => semanticIncidentPredictor(ctx, a),
   cross_agent_consensus_builder: (ctx, a) => crossAgentConsensusBuilder(ctx, a),
   ai_roi_narrative_generator: (ctx, a) => aiRoiNarrativeGenerator(ctx, a),
+  live_evidence_smoke_profile: (ctx, a) => liveEvidenceSmokeProfile(ctx, a),
+  formal_contract_catalog: (ctx, a) => formalContractCatalog(ctx, a),
+  governance_proof_packet: (ctx, a) => governanceProofPacket(ctx, a),
+  benchmark_roi_proof: (ctx, a) => benchmarkRoiProof(ctx, a),
+  pilot_success_pack: (ctx, a) => pilotSuccessPack(ctx, a),
+  visual_executive_report: (ctx, a) => visualExecutiveReport(ctx, a),
+  enterprise_security_proof: (ctx, a) => enterpriseSecurityProof(ctx, a),
+  competitive_battlecards: (ctx, a) => competitiveBattlecards(ctx, a),
   incident_analysis: (ctx) => incidentAnalysis(ctx),
   incident_causal_graph: (ctx, a) => incidentAnalysis(ctx, a),
   compile_intent: (ctx, a) => compileIntent(ctx, a),

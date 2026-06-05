@@ -128,3 +128,94 @@ test("ai_roi_narrative_generator produces executive ROI evidence", async () => {
   assert.ok(result.roiSignals.monthlyValueScore > 0);
   assert.ok(result.evidence.length >= 3);
 });
+
+test("live_evidence_smoke_profile defines live telemetry proof requirements", async () => {
+  const result = await dispatch("live_evidence_smoke_profile", {
+    engine: "postgres",
+    evidence: { hasLiveConnection: true, hasPgStatStatements: true, hasExplainPlan: true },
+  });
+
+  assert.equal(result.usp, "live_evidence_smoke_profile");
+  assert.equal(result.decision, "dry_run_ready");
+  assert.ok(result.requiredEvidence.includes("live_connection"));
+  assert.equal(result.source, "analysis");
+});
+
+test("formal_contract_catalog summarizes stable tool contracts", async () => {
+  const result = await dispatch("formal_contract_catalog", {
+    tools: ["ai_strategy_synthesizer", "autonomous_ops_briefing"],
+  });
+
+  assert.equal(result.usp, "formal_contract_catalog");
+  assert.ok(result.contracts.length >= 2);
+  assert.ok(result.contracts.every((contract) => contract.version === "1.0"));
+});
+
+test("governance_proof_packet exports audit-ready AI decision proof", async () => {
+  const result = await dispatch("governance_proof_packet", {
+    action: "recommend checkout index",
+    policyDecision: "REQUIRES_APPROVAL",
+    evidence: { hasRollback: true, hasPolicy: true },
+  });
+
+  assert.equal(result.usp, "governance_proof_packet");
+  assert.equal(result.decision, "approval_required");
+  assert.ok(result.proofPacket.requiredApprovals.includes("human_operator"));
+});
+
+test("benchmark_roi_proof converts measured before-after metrics into ROI proof", async () => {
+  const result = await dispatch("benchmark_roi_proof", {
+    baselineP95Ms: 900,
+    candidateP95Ms: 420,
+    baselineMonthlyCost: 50000,
+    candidateMonthlyCost: 42000,
+  });
+
+  assert.equal(result.usp, "benchmark_roi_proof");
+  assert.ok(result.roiProof.latencyImprovementPct > 0);
+  assert.ok(result.roiProof.monthlyCostSavings > 0);
+});
+
+test("pilot_success_pack creates a 30-minute pilot plan", async () => {
+  const result = await dispatch("pilot_success_pack", {
+    service: "checkout",
+    engine: "postgres",
+  });
+
+  assert.equal(result.usp, "pilot_success_pack");
+  assert.ok(result.timelineMinutes <= 30);
+  assert.ok(result.successCriteria.length >= 4);
+});
+
+test("visual_executive_report renders board-ready markdown", async () => {
+  const result = await dispatch("visual_executive_report", {
+    objective: "reduce checkout p95",
+    decision: "needs_more_evidence",
+  });
+
+  assert.equal(result.usp, "visual_executive_report");
+  assert.ok(result.reportMarkdown.includes("# Executive Database Operations Report"));
+  assert.ok(result.reportMarkdown.includes("Decision"));
+});
+
+test("enterprise_security_proof states zero autonomous write boundary", async () => {
+  const result = await dispatch("enterprise_security_proof", {
+    tenantScoped: true,
+    secretsRedacted: true,
+    productionApplyRequested: true,
+  });
+
+  assert.equal(result.usp, "enterprise_security_proof");
+  assert.equal(result.securityBoundary.zeroAutonomousWrite, true);
+  assert.equal(result.decision, "approval_required");
+});
+
+test("competitive_battlecards produce buyer-facing differentiation", async () => {
+  const result = await dispatch("competitive_battlecards", {
+    competitors: ["generic_ai_copilot", "monitoring_tool", "sql_ide"],
+  });
+
+  assert.equal(result.usp, "competitive_battlecards");
+  assert.ok(result.battlecards.length >= 3);
+  assert.ok(result.battlecards.some((card) => card.competitor === "generic_ai_copilot"));
+});

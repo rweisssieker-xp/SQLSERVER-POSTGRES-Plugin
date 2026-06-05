@@ -27,6 +27,14 @@ const strategicTools = [
   "semantic_incident_predictor",
   "cross_agent_consensus_builder",
   "ai_roi_narrative_generator",
+  "live_evidence_smoke_profile",
+  "formal_contract_catalog",
+  "governance_proof_packet",
+  "benchmark_roi_proof",
+  "pilot_success_pack",
+  "visual_executive_report",
+  "enterprise_security_proof",
+  "competitive_battlecards",
 ];
 
 test("strategic autonomous and AI USP tools have release contracts", () => {

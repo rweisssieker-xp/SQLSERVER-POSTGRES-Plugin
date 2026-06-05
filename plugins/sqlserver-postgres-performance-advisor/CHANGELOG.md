@@ -19,4 +19,5 @@
 - Added curated killer demos for unsafe prompt blocking, board-level operator briefings, cross-agent disagreement, and CIO/CTO ROI narratives.
 - Added launch-ready marketing kit and sales playbook with positioning, ICP, personas, USP matrix, competitive framing, listing copy, demo flow, objection handling, and pilot criteria.
 - Added root marketplace manifest and compacted marketplace skill files to satisfy scanner requirements for `.codex-plugin/plugin.json` and the 128-file artifact limit.
+- Added enterprise proof USP layer for live evidence, formal contracts, governance proof, benchmark ROI, pilot success, visual executive reporting, enterprise security proof, and competitive battlecards.
 - Added readiness, smoke, audit, and CI entry points for production release checks.

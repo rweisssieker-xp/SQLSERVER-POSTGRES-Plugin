@@ -22,6 +22,9 @@ operations.
 - Disruptive AI cognitive control plane for strategy synthesis, prompt risk,
   trust scoring, knowledge gaps, semantic incident prediction, multi-agent
   consensus, and executive ROI narratives.
+- Enterprise proof USPs for live evidence smoke profiles, formal contracts,
+  governance proof packets, measured ROI, pilot success packs, visual executive
+  reports, zero-autonomous-write security proof, and competitive battlecards.
 - Marketplace-ready Codex skills under `skills/`.
 
 ## Plugin Layout
@@ -188,5 +191,9 @@ execution metadata, and migration signing artifacts.
   `knowledge_gap_detector`, `ai_trust_scorecard`,
   `semantic_incident_predictor`, `cross_agent_consensus_builder`,
   `ai_roi_narrative_generator`.
+- Enterprise proof layer: `live_evidence_smoke_profile`,
+  `formal_contract_catalog`, `governance_proof_packet`,
+  `benchmark_roi_proof`, `pilot_success_pack`, `visual_executive_report`,
+  `enterprise_security_proof`, `competitive_battlecards`.
 
 See `runtime/tool-manifest.json` for the full tool list.

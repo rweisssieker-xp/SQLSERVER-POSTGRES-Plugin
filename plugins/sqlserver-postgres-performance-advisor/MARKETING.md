@@ -123,6 +123,14 @@ lower cost, and safer change.
 | Board-ready evidence | Technical findings become executive decision packets | `decision_evidence_compiler`, `autonomous_ops_briefing` |
 | AI trust scoring | Recommendations are scored for explainability, safety, reproducibility, and governance | `ai_trust_scorecard` |
 | ROI narrative | Operating evidence becomes a CIO/CTO value story | `ai_roi_narrative_generator` |
+| Live evidence proof | AI recommendations can be tied to live plans, stats, waits, and locks | `live_evidence_smoke_profile` |
+| Formal contract catalog | Every strategic USP can expose stable versioned output expectations | `formal_contract_catalog` |
+| Governance proof packet | Compliance can inspect policy, risk, evidence, approvals, and rollback proof | `governance_proof_packet` |
+| Benchmark ROI proof | Before-and-after latency and cost measurements become buyer-facing ROI evidence | `benchmark_roi_proof` |
+| Pilot success pack | Buyers get a 30-minute validation path with clear success criteria | `pilot_success_pack` |
+| Visual executive report | JSON outputs become board-ready Markdown reports | `visual_executive_report` |
+| Enterprise security proof | Zero autonomous write boundaries are explicit and testable | `enterprise_security_proof` |
+| Competitive battlecards | Sales teams get buyer-facing differentiation against generic AI, monitoring, and SQL IDEs | `competitive_battlecards` |
 
 ## Competitive Positioning
 
@@ -201,6 +209,14 @@ Feature blocks:
   agents agree or disagree.
 - Executive ROI narrative: Translate database reliability work into operating
   leverage, cost, and incident reduction.
+- Live evidence proof: Define the exact production telemetry required before a
+  recommendation can be treated as evidence-backed.
+- Governance proof packet: Export policy, approval, rollback, and risk context
+  for compliance review.
+- Visual executive report: Convert autonomous operator output into Markdown a
+  CTO, SRE lead, or change board can scan.
+- Competitive battlecards: Position CodexDB against generic AI assistants,
+  monitoring tools, and SQL IDEs.
 
 ## FAQ and Objection Handling
 
@@ -259,6 +275,7 @@ CodexDB Agent introduces a governed AI operations layer for SQL Server and
 PostgreSQL. It helps enterprise platform teams move from raw database tooling to
 closed-loop operating intelligence: objectives become dry-run plans, risky
 prompts are stopped, evidence gaps are surfaced, cross-agent disagreement is
-preserved, and executive-ready decision packets are produced before any
-production change. The result is AI-speed database operations with human and
-policy control where it matters most.
+preserved, live evidence requirements are explicit, governance proof is
+exportable, ROI can be tied to measured benchmarks, and executive-ready decision
+packets are produced before any production change. The result is AI-speed
+database operations with human and policy control where it matters most.

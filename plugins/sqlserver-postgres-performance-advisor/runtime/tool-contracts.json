@@ -118,5 +118,53 @@
     "input": { "required": ["teamHoursSavedMonthly"], "optional": ["avoidedIncidents", "costSavingsMonthly", "sloImprovementPct"] },
     "output": { "required": ["usp", "executiveNarrative", "roiSignals", "evidence", "source"] },
     "governance": ["analysis_only", "no_production_apply", "roi_claims_require_evidence"]
+  },
+  "live_evidence_smoke_profile": {
+    "version": "1.0",
+    "input": { "required": ["engine"], "optional": ["evidence"] },
+    "output": { "required": ["usp", "decision", "requiredEvidence", "missingEvidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "live_evidence_required"]
+  },
+  "formal_contract_catalog": {
+    "version": "1.0",
+    "input": { "required": ["tools"], "optional": ["version"] },
+    "output": { "required": ["usp", "decision", "contracts", "evidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "stable_contracts"]
+  },
+  "governance_proof_packet": {
+    "version": "1.0",
+    "input": { "required": ["action"], "optional": ["policyDecision", "evidence"] },
+    "output": { "required": ["usp", "decision", "proofPacket", "confidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "audit_ready_governance"]
+  },
+  "benchmark_roi_proof": {
+    "version": "1.0",
+    "input": { "required": ["baselineP95Ms", "candidateP95Ms"], "optional": ["baselineMonthlyCost", "candidateMonthlyCost"] },
+    "output": { "required": ["usp", "decision", "roiProof", "evidence", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "measured_roi_required"]
+  },
+  "pilot_success_pack": {
+    "version": "1.0",
+    "input": { "required": ["service"], "optional": ["engine"] },
+    "output": { "required": ["usp", "timelineMinutes", "steps", "successCriteria", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "pilot_dry_run_only"]
+  },
+  "visual_executive_report": {
+    "version": "1.0",
+    "input": { "required": ["objective"], "optional": ["decision", "confidence", "risks", "safeNextAction"] },
+    "output": { "required": ["usp", "decision", "reportMarkdown", "format", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "executive_report_only"]
+  },
+  "enterprise_security_proof": {
+    "version": "1.0",
+    "input": { "required": ["secretsRedacted"], "optional": ["tenantScoped", "productionApplyRequested"] },
+    "output": { "required": ["usp", "decision", "securityBoundary", "proof", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "zero_autonomous_write"]
+  },
+  "competitive_battlecards": {
+    "version": "1.0",
+    "input": { "required": ["competitors"], "optional": ["buyerSegment"] },
+    "output": { "required": ["usp", "decision", "battlecards", "source"] },
+    "governance": ["analysis_only", "no_production_apply", "buyer_facing_positioning"]
   }
 }
